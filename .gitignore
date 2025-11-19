@@ -1,0 +1,4 @@
+LocationList/
+config.py
+__pycache__/
+.claude/
