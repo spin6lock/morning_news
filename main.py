@@ -23,7 +23,21 @@ def get_news(silent=False):
         news_md += f"**日期:** {news_data.get('data', {}).get('date', 'N/A')} "
         news_md += f"({news_data.get('data', {}).get('day_of_week', 'N/A')}) "
         news_md += f"{news_data.get('data', {}).get('lunar_date', 'N/A')}\n\n"
-        news_md += f"来源: {news_data.get('message', '')}\n\n"
+
+        # 过滤掉广告内容（GitHub链接等）
+        message = news_data.get('message', '')
+        if message:
+            # 移除GitHub链接、开源地址等广告内容
+            import re
+            message = re.sub(r'https?://github\.com/\S+', '', message)
+            message = re.sub(r'开源地址\s*', '', message)
+            message = re.sub(r'反馈群\s*\d+', '', message)
+            message = re.sub(r'595941841', '', message)
+            # 清理多余的标点符号和空格
+            message = re.sub(r'[，,]\s*$', '', message)
+            message = message.strip()
+            if message:
+                news_md += f"来源: {message}\n\n"
         news_md += "---\n\n"
 
         # 获取新闻列表
