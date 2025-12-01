@@ -200,12 +200,13 @@ def main():
     result = {}
     markdown_output = []  # 收集markdown格式的输出
 
-    if args.all or args.news:
-        news_result = get_news(silent=silent)
-        if isinstance(news_result, str) and news_result.startswith('#'):
-            markdown_output.append(news_result)
+    # 获取天气信息（优先显示在最前面）
+    if args.all or args.weather:
+        weather_result = get_weather(silent=silent)
+        if isinstance(weather_result, str) and weather_result.startswith('#'):
+            markdown_output.append(weather_result)
         else:
-            result["news"] = news_result
+            result["weather"] = weather_result
 
     if args.all or args.poem:
         poem_result = get_poem(silent=silent)
@@ -214,12 +215,12 @@ def main():
         else:
             result["poem"] = poem_result
 
-    if args.all or args.weather:
-        weather_result = get_weather(silent=silent)
-        if isinstance(weather_result, str) and weather_result.startswith('#'):
-            markdown_output.append(weather_result)
+    if args.all or args.news:
+        news_result = get_news(silent=silent)
+        if isinstance(news_result, str) and news_result.startswith('#'):
+            markdown_output.append(news_result)
         else:
-            result["weather"] = weather_result
+            result["news"] = news_result
 
     # 输出结果
     if not silent:
