@@ -152,15 +152,14 @@ def get_weather(silent=False):
         weather_md += f"**更新时间:** {weather.get('updateTime', 'N/A')}\n\n"
 
         daily = weather.get('daily', [])
-        for i, day in enumerate(daily):
+        # 只显示最近两天的天气
+        for i, day in enumerate(daily[:2]):
             date = day.get('fxDate', '')
             # 格式化日期
             if i == 0:
                 date_str = f"今天 ({date})"
             elif i == 1:
                 date_str = f"明天 ({date})"
-            else:
-                date_str = f"后天 ({date})"
 
             weather_md += f"## {date_str}\n\n"
             weather_md += f"**{day.get('textDay', '')} {day.get('textNight', '')}**  \n"
@@ -170,6 +169,7 @@ def get_weather(silent=False):
             weather_md += f"💧 湿度: {day.get('humidity', '')}% | 🌧️ 降水: {day.get('precip', '')}mm  \n"
             weather_md += f"👁️ 能见度: {day.get('vis', '')}km | ☀️ 紫外线: {day.get('uvIndex', '')}  \n"
             weather_md += f"🌙 月相: {day.get('moonPhase', '')}  \n\n"
+
 
         if not silent:
             print("天气获取完成")
@@ -200,14 +200,6 @@ def main():
     result = {}
     markdown_output = []  # 收集markdown格式的输出
 
-    # 获取天气信息（优先显示在最前面）
-    if args.all or args.weather:
-        weather_result = get_weather(silent=silent)
-        if isinstance(weather_result, str) and weather_result.startswith('#'):
-            markdown_output.append(weather_result)
-        else:
-            result["weather"] = weather_result
-
     if args.all or args.poem:
         poem_result = get_poem(silent=silent)
         if isinstance(poem_result, str) and poem_result.startswith('#'):
@@ -221,6 +213,14 @@ def main():
             markdown_output.append(news_result)
         else:
             result["news"] = news_result
+
+    # 获取天气信息（显示在最末端）
+    if args.all or args.weather:
+        weather_result = get_weather(silent=silent)
+        if isinstance(weather_result, str) and weather_result.startswith('#'):
+            markdown_output.append(weather_result)
+        else:
+            result["weather"] = weather_result
 
     # 输出结果
     if not silent:
