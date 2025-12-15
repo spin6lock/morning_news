@@ -1,5 +1,6 @@
 import requests
 import argparse
+import time
 from config import weather_api_key, weather_host, news_api_url, poem_api_token
 
 def get_news(silent=False):
@@ -128,57 +129,67 @@ def get_weather(silent=False):
     """获取当天天气"""
     if not silent:
         print("正在获取天气...")
-    try:
-        # 使用config中的weather_host
-        weather_url = f"https://{weather_host}/v7/weather/3d"
-        weather_params = {
-            "location": "101280108",  # 城市ID 广州市海珠区
-            "lang": "zh",
-            "unit": "m",
-            "key": weather_api_key  # 添加API密钥
-        }
-        weather_response = requests.get(weather_url, params=weather_params)
-        weather_response.raise_for_status()
-        weather = weather_response.json()
+    # 使用config中的weather_host
+    weather_url = f"https://{weather_host}/v7/weather/3d"
+    weather_params = {
+        "location": "101280108",  # 城市ID 广州市海珠区
+        "lang": "zh",
+        "unit": "m",
+        "key": weather_api_key,
+    }
 
-        # 检查返回状态
-        if weather.get('code') != '200':
+    last_error = "未知错误"
+    for attempt in range(3):
+        try:
+            weather_response = requests.get(weather_url, params=weather_params, timeout=5)
+            weather_response.raise_for_status()
+            weather = weather_response.json()
+
+            # 检查返回状态
+            if weather.get('code') != '200':
+                last_error = f"API错误: {weather.get('code')}"
+                raise RuntimeError(last_error)
+
+            daily = weather.get('daily', [])
+            if not daily:
+                last_error = "API返回为空: daily缺失"
+                raise RuntimeError(last_error)
+
+            # 转换为markdown格式
+            weather_md = "# 🌤️ 天气预报\n\n"
+            weather_md += f"**更新时间:** {weather.get('updateTime', 'N/A')}\n\n"
+
+            # 只显示最近两天的天气
+            for i, day in enumerate(daily[:2]):
+                date = day.get('fxDate', '')
+                if i == 0:
+                    date_str = f"今天 ({date})"
+                else:
+                    date_str = f"明天 ({date})"
+
+                weather_md += f"## {date_str}\n\n"
+                weather_md += f"**{day.get('textDay', '')} {day.get('textNight', '')}**  \n"
+                weather_md += f"🌡️ 温度: **{day.get('tempMin', '')}°C** ~ **{day.get('tempMax', '')}°C**  \n"
+                weather_md += f"☀️ 日出: {day.get('sunrise', '')} | 🌙 日落: {day.get('sunset', '')}  \n"
+                weather_md += f"🌬️ 风向: {day.get('windDirDay', '')} {day.get('windScaleDay', '')}级  \n"
+                weather_md += f"💧 湿度: {day.get('humidity', '')}% | 🌧️ 降水: {day.get('precip', '')}mm  \n"
+                weather_md += f"👁️ 能见度: {day.get('vis', '')}km | ☀️ 紫外线: {day.get('uvIndex', '')}  \n"
+                weather_md += f"🌙 月相: {day.get('moonPhase', '')}  \n\n"
+
             if not silent:
-                print(f"天气API返回错误: {weather.get('code')}")
-            return {"error": f"API错误: {weather.get('code')}"}
+                print("天气获取完成")
+            return weather_md
 
-        # 转换为markdown格式
-        weather_md = "# 🌤️ 天气预报\n\n"
-        weather_md += f"**更新时间:** {weather.get('updateTime', 'N/A')}\n\n"
-
-        daily = weather.get('daily', [])
-        # 只显示最近两天的天气
-        for i, day in enumerate(daily[:2]):
-            date = day.get('fxDate', '')
-            # 格式化日期
-            if i == 0:
-                date_str = f"今天 ({date})"
-            elif i == 1:
-                date_str = f"明天 ({date})"
-
-            weather_md += f"## {date_str}\n\n"
-            weather_md += f"**{day.get('textDay', '')} {day.get('textNight', '')}**  \n"
-            weather_md += f"🌡️ 温度: **{day.get('tempMin', '')}°C** ~ **{day.get('tempMax', '')}°C**  \n"
-            weather_md += f"☀️ 日出: {day.get('sunrise', '')} | 🌙 日落: {day.get('sunset', '')}  \n"
-            weather_md += f"🌬️ 风向: {day.get('windDirDay', '')} {day.get('windScaleDay', '')}级  \n"
-            weather_md += f"💧 湿度: {day.get('humidity', '')}% | 🌧️ 降水: {day.get('precip', '')}mm  \n"
-            weather_md += f"👁️ 能见度: {day.get('vis', '')}km | ☀️ 紫外线: {day.get('uvIndex', '')}  \n"
-            weather_md += f"🌙 月相: {day.get('moonPhase', '')}  \n\n"
-
-
-        if not silent:
-            print("天气获取完成")
-        return weather_md
-
-    except requests.exceptions.RequestException as e:
-        if not silent:
-            print(f"获取天气失败: {e}")
-        return {"error": str(e)}
+        except (requests.exceptions.RequestException, RuntimeError, ValueError) as e:
+            last_error = str(e)
+            if attempt < 2:
+                if not silent:
+                    print(f"获取天气失败: {last_error}，重试中（{attempt + 1}/2）...")
+                time.sleep(1 + attempt)
+                continue
+            if not silent:
+                print(f"获取天气失败: {last_error}")
+            return {"error": last_error}
 
 def main():
     parser = argparse.ArgumentParser(description='早安新闻助手 - 可控制获取的新闻、诗句和天气')

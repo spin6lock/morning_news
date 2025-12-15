@@ -123,14 +123,14 @@ chmod +x daily_run.sh
 
 ### 配置cron任务
 
-每天早上8点自动推送：
+每天早上7:58自动推送（提前2分钟执行）：
 
 ```bash
 # 编辑crontab
 crontab -e
 
 # 添加以下行
-0 8 * * * /home/spin6lock/opensource/morning_news/daily_run.sh
+58 7 * * * /home/spin6lock/opensource/morning_news/daily_run.sh
 ```
 
 ### 手动运行
