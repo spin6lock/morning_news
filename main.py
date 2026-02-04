@@ -1,6 +1,7 @@
 import requests
 import argparse
 import time
+import subprocess
 from config import weather_api_key, weather_host, news_api_url, poem_api_token
 
 def get_news(silent=False):
@@ -125,6 +126,46 @@ def get_poem(silent=False):
             print(f"获取诗句失败: {e}")
         return {"error": str(e)}
 
+def get_hot_news(silent=False, prompt=""):
+    """使用 Claude Code 搜索网络热点新闻"""
+    if not silent:
+        print("正在搜索网络热点新闻...")
+
+    # 分类版提示词
+    default_prompt = "搜索今天的热点新闻，按科技、财经、国际、社会、娱乐五个领域分类，每个领域3-5条，简洁列出标题"
+    search_prompt = prompt or default_prompt
+
+    try:
+        result = subprocess.run(
+            ['claude', '-p', search_prompt, '--permission-mode', 'bypassPermissions'],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        if result.returncode == 0:
+            hot_news_md = "# 🔥 网络热点新闻\n\n"
+            output = result.stdout.strip()
+            if output:
+                hot_news_md += output + "\n\n"
+            if not silent:
+                print("热点新闻获取完成")
+            return hot_news_md
+        else:
+            error_msg = result.stderr or "未知错误"
+            if not silent:
+                print(f"获取热点新闻失败: {error_msg}")
+            return {"error": error_msg}
+
+    except subprocess.TimeoutExpired:
+        if not silent:
+            print("获取热点新闻失败: 请求超时")
+        return {"error": "请求超时"}
+    except FileNotFoundError:
+        if not silent:
+            print("获取热点新闻失败: 未找到 claude 命令")
+        return {"error": "未找到 claude 命令"}
+
 def get_weather(silent=False):
     """获取当天天气"""
     if not silent:
@@ -195,6 +236,7 @@ def main():
     parser = argparse.ArgumentParser(description='早安新闻助手 - 可控制获取的新闻、诗句和天气')
     parser.add_argument('--news', action='store_true', help='获取新闻')
     parser.add_argument('--poem', action='store_true', help='获取诗句')
+    parser.add_argument('--hotnews', action='store_true', help='获取网络热点新闻')
     parser.add_argument('--weather', action='store_true', help='获取天气')
     parser.add_argument('--all', action='store_true', help='获取所有信息（默认）')
     parser.add_argument('-o', '--output', action='store_true', help='输出模式：仅输出markdown结果，无调试信息')
@@ -202,7 +244,7 @@ def main():
     args = parser.parse_args()
 
     # 如果没有指定任何参数，默认获取所有信息
-    if not any([args.news, args.poem, args.weather, args.all]):
+    if not any([args.news, args.poem, args.hotnews, args.weather, args.all]):
         args.all = True
 
     # 静音模式：用于-o参数
@@ -218,6 +260,13 @@ def main():
         else:
             result["poem"] = poem_result
 
+    if args.all or args.hotnews:
+        hotnews_result = get_hot_news(silent=silent)
+        if isinstance(hotnews_result, str) and hotnews_result.startswith('#'):
+            markdown_output.append(hotnews_result)
+        else:
+            result["hotnews"] = hotnews_result
+
     if args.all or args.news:
         news_result = get_news(silent=silent)
         if isinstance(news_result, str) and news_result.startswith('#'):
@@ -232,6 +281,11 @@ def main():
             markdown_output.append(weather_result)
         else:
             result["weather"] = weather_result
+
+    # 在输出前检查是否有错误，转换为友好的错误占位符
+    for i, item in enumerate(markdown_output):
+        if isinstance(item, dict) and "error" in item:
+            markdown_output[i] = "# 🔥 网络热点新闻\n\n⚠️ 获取失败: " + item["error"] + "\n\n"
 
     # 输出结果
     if not silent:
