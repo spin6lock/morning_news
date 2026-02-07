@@ -283,9 +283,29 @@ def main():
             result["weather"] = weather_result
 
     # 在输出前检查是否有错误，转换为友好的错误占位符
-    for i, item in enumerate(markdown_output):
-        if isinstance(item, dict) and "error" in item:
-            markdown_output[i] = "# 🔥 网络热点新闻\n\n⚠️ 获取失败: " + item["error"] + "\n\n"
+    # 处理 result 字典中的错误结果
+    error_placeholders = {
+        "hotnews": "# 🔥 网络热点新闻\n\n⚠️ 获取失败: {}\n\n",
+        "poem": "# 📜 每日诗句\n\n⚠️ 获取失败: {}\n\n",
+        "news": "# 📰 每日新闻\n\n⚠️ 获取失败: {}\n\n",
+        "weather": "# 🌤️ 天气预报\n\n⚠️ 获取失败: {}\n\n"
+    }
+
+    # 为每个有错误的模块生成占位符
+    for key in ["hotnews", "poem", "news", "weather"]:
+        if key in result and isinstance(result[key], dict) and "error" in result[key]:
+            error_msg = result[key]["error"]
+            # 按照原来的顺序插入占位符
+            if key == "hotnews":
+                markdown_output.insert(1, error_placeholders[key].format(error_msg))
+            elif key == "poem":
+                markdown_output.insert(0, error_placeholders[key].format(error_msg))
+            elif key == "news":
+                markdown_output.insert(2, error_placeholders[key].format(error_msg))
+            elif key == "weather":
+                markdown_output.append(error_placeholders[key].format(error_msg))
+            # 从 result 中移除已处理的错误
+            del result[key]
 
     # 输出结果
     if not silent:
