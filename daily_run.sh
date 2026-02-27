@@ -5,7 +5,7 @@
 
 # 设置环境变量（cron 环境缺少这些变量）
 export HOME=/home/spin6lock
-export PATH=/home/spin6lock/.local/bin:/usr/local/bin:/usr/bin:/bin
+export PATH=/home/spin6lock/.nvm/versions/node/v22.17.0/bin:/home/spin6lock/.local/bin:/usr/local/bin:/usr/bin:/bin
 
 # 获取所有数据（新闻、诗歌、天气），并保存到today.md（静音模式，只输出markdown）
 python3 /home/spin6lock/opensource/morning_news/main.py --all -o > /home/spin6lock/opensource/morning_news/today.md
